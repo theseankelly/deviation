@@ -82,6 +82,7 @@ u8 NRF24L01_WriteRegisterMulti(u8 reg, const u8 data[], u8 length);
 u8 NRF24L01_WritePayload(u8 *data, u8 len);
 u8 NRF24L01_ReadReg(u8 reg);
 u8 NRF24L01_ReadRegisterMulti(u8 reg, u8 data[], u8 length);
+u8 NRF24L01_ReadPayloadLength();
 u8 NRF24L01_ReadPayload(u8 *data, u8 len);
 
 u8 NRF24L01_FlushTx();

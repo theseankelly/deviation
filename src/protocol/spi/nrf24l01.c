@@ -113,6 +113,16 @@ u8 NRF24L01_ReadRegisterMulti(u8 reg, u8 data[], u8 length)
     return res;
 }
 
+u8 NRF24L01_ReadPayloadLength()
+{
+    u8 len;
+    CS_LO();
+    PROTOSPI_xfer(R_RX_PL_WID);
+    len = PROTOSPI_xfer(0xFF);
+    CS_HI();
+    return len;
+}
+
 u8 NRF24L01_ReadPayload(u8 *data, u8 length)
 {
     CS_LO();
