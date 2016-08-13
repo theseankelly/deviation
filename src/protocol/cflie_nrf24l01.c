@@ -179,21 +179,25 @@ enum {
 #define STEP_SIZE "3276810"  // == 10small/50large == (50 << 16) | 10
 static const char * const cflie_opts[] = {
     _tr_noop("Telemetry"),  _tr_noop("Off"), _tr_noop("On"), NULL,
-    _tr_noop("Max Pitch"), "0", "1000", STEP_SIZE, NULL,
-    _tr_noop("Max Roll"), "0", "1000", STEP_SIZE, NULL,
+    _tr_noop("Max Ang Level"), "0", "1000", STEP_SIZE, NULL,
+    _tr_noop("Max AngV Rate"), "0", "1000", STEP_SIZE, NULL,
     NULL
 };
 
 enum {
     PROTOOPTS_TELEMETRY = 0,
-    PROTOOPTS_MAX_PITCH,
-    PROTOOPTS_MAX_ROLL,
+    PROTOOPTS_MAX_ANG_LEVEL,
+    PROTOOPTS_MAX_ANGV_RATE,
     LAST_PROTO_OPT,
 };
 ctassert(LAST_PROTO_OPT <= NUM_PROTO_OPTS, too_many_protocol_opts);
 
 #define TELEM_OFF 0
 #define TELEM_ON 1
+
+// Flight modes -- maps to RPType in the cflie firmware
+#define MODE_RATE   0
+#define MODE_LEVEL  1
 
 // Bit vector from bit position
 #define BV(bit) (1 << bit)
@@ -322,16 +326,35 @@ static void send_cmd_packet()
       float pitch;
       float yaw;
       uint16_t thrust;
+      uint8_t mode;
     } __attribute__((packed)) cpkt;
 
-    // Channels in AETR order
-    // Roll, aka aileron, float +- MAX_ROLL in degrees
-    // float roll  = -(float) Channels[0]*MAX_ROLL/10000;
-    f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ROLL]);
+    // Switch on indicates level mode
+    if (Channels[5] >= 0) {
+        cpkt.mode = MODE_LEVEL;
+    } else {
+        cpkt.mode = MODE_RATE;
+    }
 
-    // Pitch, aka elevator, float +- MAX_PITCH degrees
-    // float pitch = -(float) Channels[1]*MAX_PITCH/10000;
-    f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_PITCH]);
+    // Channels in AETR order
+
+    if(cpkt.mode == MODE_LEVEL) {
+        // Roll, aka aileron, float +- MAX_ROLL in degrees
+        // float roll  = -(float) Channels[0]*MAX_ROLL/10000;
+        f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ANG_LEVEL]);
+
+        // Pitch, aka elevator, float +- MAX_PITCH degrees
+        // float pitch = -(float) Channels[1]*MAX_PITCH/10000;
+        f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ANG_LEVEL]);
+    } else {
+        // Roll, aka aileron, float +- MAX_ROLL in degrees
+        // float roll  = -(float) Channels[0]*MAX_ROLL/10000;
+        f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ANGV_RATE]);
+
+        // Pitch, aka elevator, float +- MAX_PITCH degrees
+        // float pitch = -(float) Channels[1]*MAX_PITCH/10000;
+        f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ANGV_RATE]);
+    }
 
     // Thrust, aka throttle 0..65535, working range 5535..65535
     // No space for overshoot here, hard limit Channel3 by -10000..10000
@@ -839,15 +862,15 @@ const void *CFlie_Cmds(enum ProtoCmds cmd)
             return 0;
         case PROTOCMD_CHECK_AUTOBIND: return (void *)0L; // never Autobind // always Autobind
         case PROTOCMD_BIND:  initialize(); return 0;
-        case PROTOCMD_NUMCHAN: return (void *) 5L; // A, E, T, R, + or x mode,
-        case PROTOCMD_DEFAULT_NUMCHAN: return (void *)5L;
+        case PROTOCMD_NUMCHAN: return (void *) 6L; // A, E, T, R, + or x mode, acro/level mode
+        case PROTOCMD_DEFAULT_NUMCHAN: return (void *)6L;
         case PROTOCMD_CURRENT_ID: return Model.fixed_id ? (void *)((unsigned long)Model.fixed_id) : 0;
         case PROTOCMD_GETOPTIONS:
             // If not yet set, pick some defaults
-            if (Model.proto_opts[PROTOOPTS_MAX_PITCH] == 0
-                    && Model.proto_opts[PROTOOPTS_MAX_ROLL] == 0) {
-                Model.proto_opts[PROTOOPTS_MAX_PITCH] = 50;
-                Model.proto_opts[PROTOOPTS_MAX_ROLL] = 50;
+            if (Model.proto_opts[PROTOOPTS_MAX_ANG_LEVEL] == 0
+                    && Model.proto_opts[PROTOOPTS_MAX_ANGV_RATE] == 0) {
+                Model.proto_opts[PROTOOPTS_MAX_ANG_LEVEL] = 50;
+                Model.proto_opts[PROTOOPTS_MAX_ANGV_RATE] = 1080;
             }
             return cflie_opts;
         case PROTOCMD_TELEMETRYSTATE:
