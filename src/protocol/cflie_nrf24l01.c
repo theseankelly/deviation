@@ -430,6 +430,8 @@ static u8 telemetry_setup_state_machine()
                 // Received the ACK payload. Save the toc_size
                 // and advance to the next state
                 toc_size = rx_packet[2];
+                Telemetry.value[TELEM_DSM_FLOG_FADESL] = toc_size;
+                TELEMETRY_SetUpdated(TELEM_DSM_FLOG_FADESL);
                 telemetry_setup_state =
                         CFLIE_TELEM_SETUP_STATE_SEND_CMD_GET_ITEM;
                 return state_machine_completed;
@@ -544,6 +546,10 @@ static u8 telemetry_setup_state_machine()
         break;
 
     case CFLIE_TELEM_SETUP_STATE_SEND_CONTROL_CREATE_BLOCK:
+        Telemetry.value[TELEM_DSM_FLOG_FADESA] = vbat_var_id;
+        TELEMETRY_SetUpdated(TELEM_DSM_FLOG_FADESA);
+        Telemetry.value[TELEM_DSM_FLOG_FADESB] = extvbat_var_id;
+        TELEMETRY_SetUpdated(TELEM_DSM_FLOG_FADESB);
         telemetry_setup_state = CFLIE_TELEM_SETUP_STATE_ACK_CONTROL_CREATE_BLOCK;
         tx_packet[0] = crtp_create_header(CRTP_PORT_LOG, CRTP_LOG_CHAN_SETTINGS);
         tx_packet[1] = CRTP_LOG_SETTINGS_CMD_CREATE_BLOCK;
@@ -761,7 +767,9 @@ static u16 cflie_callback()
         break;
 
     case CFLIE_DATA:
-        update_telemetry();
+        if (Model.proto_opts[PROTOOPTS_TELEMETRY] == TELEM_ON) {
+            update_telemetry();
+        }
         if (packet_ack() == PKT_PENDING)
             return PACKET_CHKTIME;         // packet send not yet complete
         send_cmd_packet();
