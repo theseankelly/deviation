@@ -689,7 +689,7 @@ static void update_telemetry()
                     // Bytes 6 and 7 are the Vbat in mV units
                     u16 vBat;
                     memcpy(&vBat, &rx_packet[5], sizeof(u16));
-                    Telemetry.value[TELEM_DSM_FLOG_VOLT2] = (s32) (vBat / 10); // The log value expects tenths of volts
+                    Telemetry.value[TELEM_DSM_FLOG_VOLT2] = (s32) (vBat / 10); // The log value expects hundredths of volts
                     TELEMETRY_SetUpdated(TELEM_DSM_FLOG_VOLT2);
 
                     // Bytes 8 and 9 are the ExtVbat in mV units
