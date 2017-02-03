@@ -59,11 +59,21 @@
 enum {
     CRTP_PORT_CONSOLE = 0x00,
     CRTP_PORT_PARAM = 0x02,
-    CRTP_PORT_COMMANDER = 0x03,
+    CRTP_PORT_SETPOINT = 0x03,
     CRTP_PORT_MEM = 0x04,
     CRTP_PORT_LOG = 0x05,
+    CRTP_PORT_POSITION = 0x06,
+    CRTP_PORT_SETPOINT_GENERIC = 0x07,
     CRTP_PORT_PLATFORM = 0x0D,
     CRTP_PORT_LINK = 0x0F,
+};
+
+// Setpoint type definitions for the generic setpoint channel
+
+enum {
+  CRTP_SETPOINT_GENERIC_STOP_TYPE = 0x00,
+  CRTP_SETPOINT_GENERIC_VELOCITY_WORLD_TYPE = 0x01,
+  CRTP_SETPOINT_GENERIC_RATE_TYPE = 0x02,
 };
 
 // Channel definitions for the LOG port
@@ -364,7 +374,7 @@ static void send_cmd_packet()
     f_yaw = - Channels[3] * FRAC_SCALE / (10000 / 400);
     frac2float(f_yaw, &cpkt.yaw);
 
-    // Switch on/off?
+    // Xmode switch on/off?
     if (Channels[4] >= 0) {
         frac2float(f_roll, &cpkt.roll);
         frac2float(f_pitch, &cpkt.pitch);
@@ -377,10 +387,20 @@ static void send_cmd_packet()
         frac2float(f_x_pitch, &cpkt.pitch);
     }
 
-    // Construct and send packet
-    tx_packet[0] = crtp_create_header(CRTP_PORT_COMMANDER, 0); // Commander packet to channel 0
-    memcpy(&tx_packet[1], (char*) &cpkt, sizeof(cpkt));
-    tx_payload_len = 1 + sizeof(cpkt);
+    // Construct and send packet - type is determined by self-level switch
+    if(Channels[5] >= 0) {
+        // Self-level enabled
+        tx_packet[0] = crtp_create_header(CRTP_PORT_SETPOINT, 0); // RPYT setpoint packet to channel 0
+        memcpy(&tx_packet[1], (char *)&cpkt, sizeof(cpkt));
+        tx_payload_len = 1 + sizeof(cpkt);
+    } else {
+        // Self-level disabled
+        tx_packet[0] = crtp_create_header(CRTP_PORT_SETPOINT_GENERIC, 0); // Generic setpoint to channel 0
+        tx_packet[1] = CRTP_SETPOINT_GENERIC_RATE_TYPE;
+        memcpy(&tx_packet[2], (char *)&cpkt, sizeof(cpkt));
+        tx_payload_len = 2 + sizeof(cpkt);
+    }
+    
     send_packet();
 
     // Print channels every 2 seconds or so
