@@ -129,7 +129,6 @@ static inline u8 crtp_create_header(u8 port, u8 channel)
 // Timeout for callback in uSec, 10ms=10000us for Crazyflie
 #define PACKET_PERIOD 10000
 
-
 // Channel numbers
 enum {
     CHANNEL1 = 0,
@@ -143,6 +142,13 @@ enum {
     CHANNEL9,
     CHANNEL10
 };
+
+// Defines for max angle and rate setpoints
+#define MAX_ROLL_ANGLE 50
+#define MAX_PITCH_ANGLE 50
+#define MAX_ROLL_RATE 1080
+#define MAX_PITCH_RATE 1080
+#define MAX_YAW_RATE 400 // Yaw is always a rate-based control
 
 #define MAX_PACKET_SIZE 32  // CRTP is 32 bytes
 
