@@ -372,9 +372,11 @@ static void send_cmd_packet()
     // The values of MAX_ROLL and MAX_PITCH depend on whether
     // self-level is enabled or not
     if(Channels[5] >= 0) {
+        // Self-level enabled, use max angle values
         f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ROLL_ANG]);
         f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_PITCH_ANG]);
     } else {
+        // Self-level disabled, use max rate values
         f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ROLL_RATE]);
         f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_PITCH_RATE]);
     }
