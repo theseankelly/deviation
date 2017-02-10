@@ -205,12 +205,18 @@ static const u8 vbat_var_type = LOG_UINT16;
 static const char* extvbat_var_name = "extVbatMV";
 static const u8 extvbat_var_type = LOG_UINT16;
 
+#define STEP_SIZE "3276810"  // == 10small/50large == (50 << 16) | 10
 static const char * const cflie_opts[] = {
-  _tr_noop("Telemetry"),  _tr_noop("Off"), _tr_noop("On"), NULL,
-  NULL
+    _tr_noop("Telemetry"),  _tr_noop("Off"), _tr_noop("On"), NULL,
+    _tr_noop("Max Pitch"), "0", "1000", STEP_SIZE, NULL,
+    _tr_noop("Max Roll"), "0", "1000", STEP_SIZE, NULL,
+    NULL
 };
+
 enum {
     PROTOOPTS_TELEMETRY = 0,
+    PROTOOPTS_MAX_PITCH,
+    PROTOOPTS_MAX_ROLL,
     LAST_PROTO_OPT,
 };
 ctassert(LAST_PROTO_OPT <= NUM_PROTO_OPTS, too_many_protocol_opts);
@@ -351,13 +357,13 @@ static void send_cmd_packet()
     } __attribute__((packed)) cpkt;
 
     // Channels in AETR order
-    // Roll, aka aileron, float +- 50.0 in degrees
-    // float roll  = -(float) Channels[0]*50.0/10000;
-    f_roll = -Channels[0] * FRAC_SCALE / (10000 / 50);
+    // Roll, aka aileron, float +- MAX_ROLL in degrees
+    // float roll  = -(float) Channels[0]*MAX_ROLL/10000;
+    f_roll = -Channels[0] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_ROLL]);
 
-    // Pitch, aka elevator, float +- 50.0 degrees
-    //float pitch = -(float) Channels[1]*50.0/10000;
-    f_pitch = -Channels[1] * FRAC_SCALE / (10000 / 50);
+    // Pitch, aka elevator, float +- MAX_PITCH degrees
+    // float pitch = -(float) Channels[1]*MAX_PITCH/10000;
+    f_pitch = -Channels[1] * FRAC_SCALE / (10000 / Model.proto_opts[PROTOOPTS_MAX_PITCH]);
 
     // Thrust, aka throttle 0..65535, working range 5535..65535
     // No space for overshoot here, hard limit Channel3 by -10000..10000
@@ -840,7 +846,14 @@ const void *CFlie_Cmds(enum ProtoCmds cmd)
         case PROTOCMD_NUMCHAN: return (void *) 5L; // A, E, T, R, + or x mode,
         case PROTOCMD_DEFAULT_NUMCHAN: return (void *)5L;
         case PROTOCMD_CURRENT_ID: return Model.fixed_id ? (void *)((unsigned long)Model.fixed_id) : 0;
-        case PROTOCMD_GETOPTIONS: return cflie_opts;
+        case PROTOCMD_GETOPTIONS:
+            // If not yet set, pick some defaults
+            if (Model.proto_opts[PROTOOPTS_MAX_PITCH] == 0
+                    && Model.proto_opts[PROTOOPTS_MAX_ROLL] == 0) {
+                Model.proto_opts[PROTOOPTS_MAX_PITCH] = 50;
+                Model.proto_opts[PROTOOPTS_MAX_ROLL] = 50;
+            }
+            return cflie_opts;
         case PROTOCMD_TELEMETRYSTATE:
             return (void *)(long)(Model.proto_opts[PROTOOPTS_TELEMETRY] == TELEM_ON ? PROTO_TELEM_ON : PROTO_TELEM_OFF);
         case PROTOCMD_TELEMETRYTYPE: 
